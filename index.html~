@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+
+<head>
+<style>
+.header-container {
+  position: relative;
+  top: 50px;
+}
+.header-container h1 {
+  font-family: Georgia;
+  font-size: 50px;
+  color: #334AFF;
+  text-align: center;
+}
+.main-container {
+  position: relative;
+  top: 70px;
+  width: 70%;
+  min-width: 615px;
+  margin: auto;
+  border: 1px solid #606060;
+  padding: 10px;
+  overflow: hidden;
+}
+#ManifestConversion input[type=text]{
+  width: 100%;
+  margin: 10px 0;
+}
+#ManifestConversion input[type=File]{
+  width: 50%;
+  margin: 10px 0;
+  display: inline;
+  font-size: 18px;
+}
+#ManifestConversion h4{
+  display: inline;
+}
+#ManifestConversion button, a{
+  margin: 20px 0;
+  padding: 8px;
+  width: 50%;
+  font-size: 22px;
+  text-align: center;
+  background-color: DodgerBlue;
+}
+#ManifestConversion a{
+  border: 2px solid DodgerBlue;
+  float: right;
+}
+.videoCentered {
+    width: 99%;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 30px 0 0 0;
+    display: block
+}
+.footer-container {
+  position: relative;
+  top: 80px;
+  margin: auto;
+  width: 70%;
+}
+.footer-container img {
+  width: 10%;
+}
+/*#controls
+{
+    width: 70%;
+    min-width: 615px;
+    margin: 0px auto 20px auto;
+    border: 1px solid #606060;
+    padding: 3px;
+    overflow: hidden;
+    float: center
+}
+.innerControls
+{
+    display: block;
+    float: left;
+    width: 99%;
+    margin: 3px;
+    padding-left: 3px;
+    font-size: 8pt
+}
+.videoCentered
+{
+    width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+    display: block
+}
+.center
+{
+    width: 70%;
+    min-width: 615px;
+    overflow: hidden;
+    margin-left: auto;
+    margin-right: auto;
+    display: block
+}*/
+</style>
+
+<title>DASH to HLS Playback</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.3/FileSaver.min.js"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+<!--<link rel="stylesheet" type="text/css" href="index.css">-->
+</head>
+
+<body>
+  <div class="header-container">
+      <h1>DASH to HLS Playback</h1>
+  </div>
+
+  <div class="main-container">   
+      <div id='ManifestConversion'>
+	  <h4>Load MPD: </h4><input type="text" id="urlToLoad"><br>
+	  <input type="file" id="fileToLoad">(media segments should be at root of localhost)<br>
+	  <button onclick="loadAndConvert()">Convert and Play</button>
+	  <a id="streamURL">Open Master M3U8</a><br>
+	  <!--<button id="enableStreaming" onclick="loadStream($('#streamURL').val())">Enable Streaming</button>-->
+      </div>
+      <video id="video" controls autoplay class="videoCentered"></video><br>
+      <canvas id="buffered_c" height="15" class="videoCentered" onclick="buffered_seek(event);"></canvas><br><br>
+    <!--<pre id="HlsStatus" class="center" style="white-space: pre-wrap;"></pre>-->
+  </div>
+  
+  <div class="footer-container">
+      <h2>Contributor:</h2>
+        <a target="_blank" href="https://github.com/video-dev/hls.js">
+          <img src="https://cloud.githubusercontent.com/assets/616833/19739063/e10be95a-9bb9-11e6-8100-2896f8500138.png"/>
+        </a>
+  </div>
+
+  <script src="hls.js"></script>
+  <script src="canvas.js"></script>
+  <script src="metrics.js"></script>
+  <script src="jsonpack.js"></script>
+  <script src="conversion.js"></script>
+  <script>
+    $(document).ready(function() {
+      $('#streamURL').change(function()  { loadStream($('#streamURL').val());});
+      $('#metricsButtonWindow').toggle(windowSliding);
+      $('#metricsButtonFixed').toggle(!windowSliding);
+      $('#autoRecoverError').click(function()  { autoRecoverError = this.checked; updatePermalink();});
+      $('#enableWorker').click(function()  { enableWorker = this.checked; updatePermalink();});
+      $('#dumpfMP4').click(function()  { dumpfMP4 = this.checked; updatePermalink();});
+      $('#levelCapping').change(function()  { levelCapping = this.value; updatePermalink();});
+      $('#defaultAudioCodec').change(function()  { defaultAudioCodec = this.value; updatePermalink();});
+      $('#enableStreaming').prop( "checked", enableStreaming );
+      $('#autoRecoverError').prop( "checked", autoRecoverError );
+      $('#enableWorker').prop( "checked", enableWorker );
+      $('#dumpfMP4').prop( "checked", dumpfMP4 );
+      $('#levelCapping').val(levelCapping);
+      $('#defaultAudioCodec').val(defaultAudioCodec || "undefined");
+
+      //$('h2').append(' <a target=_blank href=https://github.com/video-dev/hls.js/releases/tag/v' + Hls.version + '>v' + Hls.version + '</a>');
+    });
+
+      'use strict';
+      var hls,events, stats,tracks,fmp4Data,
+	  enableStreaming = JSON.parse(getURLParam('enableStreaming',true))
+	  autoRecoverError = JSON.parse(getURLParam('autoRecoverError',true)),
+	  enableWorker = JSON.parse(getURLParam('enableWorker',true)),
+	  levelCapping = JSON.parse(getURLParam('levelCapping',-1)),
+	  defaultAudioCodec = getURLParam('defaultAudioCodec',undefined),
+	  dumpfMP4 = getURLParam('dumpfMP4',false);
+      var video = $('#video')[0];
+      video.volume = 0.05;
+  </script>
+  
+</body>
+</html>
