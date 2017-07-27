@@ -11,10 +11,12 @@ A web server (for example a localhost) is required to store the newly created M3
 ### Installing
 Under the server folder git clone the source HTTP.
 ### Running
-Use a browser tested on Chrome and Firefox) to open the folder from server. Provide the MPD URL address or choose from file system the MPD of your interest. Hit Convert and Play.
+Use a browser tested on Chrome and Firefox) to open the folder from server.
+Provide the MPD URL address or choose from file system the MPD of your interest.
+Hit Convert and Play.
 #### MPD instances
-http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/1/MultiRatePatched.mpd
-http://10.4.247.98/server/adithyanNewTestVectors/adaptationSetSwitching/Dashed/manifest.mpd
+* http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/1/MultiRatePatched.mpd
+* http://10.4.247.98/server/adithyanNewTestVectors/adaptationSetSwitching/Dashed/manifest.mpd
 #### Notes
 * If loading MPD from URL, media segments must locate at the same address of the given MPD file.
 * If choosing MPD from file system, media segments must be trackable at the root of the server.
