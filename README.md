@@ -3,7 +3,7 @@ DASH to HLS Playback converts [DASH](https://en.wikipedia.org/wiki/Dynamic_Adapt
 
 DASH to HLS Playback does not need any player, it works directly on a standard HTML <video> element on a browser HTML5 video and MediaSource Extensions supported.
 
-It is written in Javascript.
+It is written with Javascript and HTML.
 
 ## Getting Worked
 ### Prerequisite
