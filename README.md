@@ -9,7 +9,7 @@ It is written with Javascript and HTML.
 ### Prerequisite
 A web server (for example the localhost) is required to store the newly created M3U8 files, fetch media segments and play them out. Since All HLS resources must be delivered with CORS headers permitting GET requests.
 ### Installing
-Git clone the source under the server folder.
+Under the server folder git clone the source HTTP.
 ### Running
 Use a browser(tested on Chrome and Firefox) to open the folder from server. Provide the MPD URL address or choose from file system the MPD of your interest. Hit Convert and Play.
 #### MPD instances
