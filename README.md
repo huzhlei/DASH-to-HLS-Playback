@@ -13,7 +13,7 @@ Git clone the source under the server folder.
 ### Running
 Use a browser(tested on Chrome and Firefox) to open the folder from server. Provide the MPD URL address or choose from file system the MPD of your interest. Hit Convert and Play.
 * If loading MPD from URL, media segments must locate at the same address of the given MPD file.
-* If choosing MPD from file system, media segments must be trackable at the root of the running server.
+* If choosing MPD from file system, media segments must be trackable at the root of the server.
 * It only supports MPD file with one period. If several periods in the MPD, it only works on the first period. 
 
 ## Bulit With
