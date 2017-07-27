@@ -15,7 +15,6 @@ function loadAndConvert()
 		var masterAddress = createMasterPlaylist(MpdInfo, createMediaPlaylist(MpdInfo, url));
 		document.getElementById("streamURL").value = masterAddress;
 		document.getElementById("streamURL").href = masterAddress;
-		document.getElementById("streamURL").target = "_blank";
 		loadStream($('#streamURL').val());
 	    }
 	};
@@ -23,15 +22,16 @@ function loadAndConvert()
     }
     else
     {   
-        var url = "http://localhost/";
 	var fileReader = new FileReader();
 	fileReader.onload = function(fileLoadedEvent)
 	{   
-	    var MpdInfo = extractMpdInfo(fileLoadedEvent.target.result);
+	    var mpdRaw = fileLoadedEvent.target.result;
+	    var MpdInfo = extractMpdInfo(mpdRaw);
+	    var regURL = /\<BaseURL\>(.*?)\<\/BaseURL\>/g;
+	    var url = regURL.exec(mpdRaw)[1];
 	    var masterAddress = createMasterPlaylist(MpdInfo, createMediaPlaylist(MpdInfo, url));
 	    document.getElementById("streamURL").value = masterAddress; 
 	    document.getElementById("streamURL").href = masterAddress;
-	    document.getElementById("streamURL").target = "_blank";
 	    loadStream($('#streamURL').val());
 	}
 	fileReader.readAsText(fileToLoad, "UTF-8");
@@ -73,6 +73,7 @@ function createMediaPlaylist(MpdInfo, url)
 	var timePatternSec = /(\d*)S/;
         var time = timePatternFull.exec(rawDuration)||timePatternSec.exec(rawDuration);
 	var maxDuration = parseFloat(time[1]) * 3600 + parseFloat(time[2]) * 60 + parseFloat(time[3]);
+	// var maxDuration = parseFloat(time[1]);
 	var maxSegmentDuration = '#EXT-X-TARGETDURATION:' + maxDuration + '\n';
 	    
 	// #EXT-X-MEDIA-SEQUENCE:1
@@ -100,6 +101,7 @@ function createMediaPlaylist(MpdInfo, url)
 	var rawtotalDuration = item[key.indexOf('mediaPresentationDuration')];   // if no such key, ceil(all #EXTINF)!
         var totalTime = timePatternFull.exec(rawtotalDuration)||timePatternSec.exec(rawDuration);
 	var totalDuration = parseFloat(totalTime[1]) * 3600 + parseFloat(totalTime[2]) * 60 + parseFloat(totalTime[3]);
+	//var totalDuration = parseFloat(totalTime[1]);
 	var info = '#EXT-X-MLB-INFO:' + 'max-bw=' + item[key.indexOf('bandwidth', idx)] + ',duration=' + totalDuration + '\n';
 	 
 	var segmentsName = item[key.indexOf('media', idx)];
