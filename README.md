@@ -11,7 +11,7 @@ A web server (for example a localhost) is required to store the newly created M3
 ### Installing
 Under the server folder git clone the source HTTP.
 ### Running
-Use a browser tested on Chrome and Firefox) to open the folder from server.
+Use a browser (tested on Chrome and Firefox) to open the folder from server.
 Provide the MPD URL address or choose from file system the MPD of your interest.
 Hit Convert and Play.
 #### MPD instances
