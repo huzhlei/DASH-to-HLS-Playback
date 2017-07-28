@@ -20,8 +20,16 @@ Provide the MPD URL address or choose from file system the MPD of your interest.
 
 Hit Convert and Play.
 #### MPD instances
-* http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/1/MultiRatePatched.mpd
+* http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/1/MultiRate.mpd
+* http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/2/MultiRate.mpd
 * http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd
+* http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/2/MultiRes.mpd
+* http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/1/MultiRatePatched.mpd
+* http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/2/MultiRate.mpd
+* http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/1/MultiResMPEG2.mpd
+* http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/2/MultiRes.mpd
+* http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/1/MultiRate.mpd
+* http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/2/MultiRate.mpd
 
 #### Notes
 * If loading MPD from URL, media segments must locate at the same address of the given MPD file.
