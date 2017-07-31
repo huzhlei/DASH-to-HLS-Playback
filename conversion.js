@@ -14,7 +14,7 @@ function selectLoad()
 
 /*conversion part*/
 function loadAndConvert()
-{    
+{
     if (document.getElementById("mySelect").value === 'URL')
     {
 	var url = document.getElementById("urlToLoad").value;
@@ -23,8 +23,9 @@ function loadAndConvert()
 	request.responseType = "text";
 	request.onload = function () {
 	    if (this.status === 200) {
-		var MpdInfo = extractMpdInfo(request.responseText);
-		var masterAddress = createMasterPlaylist(MpdInfo, createMediaPlaylist(MpdInfo, url));
+		var mpdRaw = request.responseText;
+		var mpdRaw = mpdRaw.replace(/\n+/g,''); // get rid of all newlines
+		var masterAddress = saveTextAsBlob(extractPeriod(mpdRaw, extractMPD(mpdRaw), url));
 		document.getElementById("streamURL").value = masterAddress;
 		document.getElementById("streamURL").href = masterAddress;
 		loadStream($('#streamURL').val());
@@ -39,10 +40,10 @@ function loadAndConvert()
 	fileReader.onload = function(fileLoadedEvent)
 	{   
 	    var mpdRaw = fileLoadedEvent.target.result;
-	    var MpdInfo = extractMpdInfo(mpdRaw);
+	    var mpdRaw = mpdRaw.replace(/\n+/g,''); // get rid of all newlines
 	    var regURL = /\<BaseURL\>(.*?)\<\/BaseURL\>/g;
 	    var url = regURL.exec(mpdRaw)[1];
-	    var masterAddress = createMasterPlaylist(MpdInfo, createMediaPlaylist(MpdInfo, url));
+	    var masterAddress = saveTextAsBlob(extractPeriod(mpdRaw, extractMPD(mpdRaw), url));
 	    document.getElementById("streamURL").value = masterAddress; 
 	    document.getElementById("streamURL").href = masterAddress;
 	    loadStream($('#streamURL').val());
@@ -50,185 +51,223 @@ function loadAndConvert()
 	fileReader.readAsText(fileToLoad, "UTF-8");
     }
 }
-    
-function extractMpdInfo(textToDec)
-{    
-    var reg = /(\w+)=\"(.*?)\"/g;			// find the pattern [xxx="yyy"], remember xxx and yyy
-    var key = [];
-    var item = [];
-    while(array = reg.exec(textToDec))
-    {
-	key.push(array[1]);				// push into array
-	item.push(array[2]);
-    }
-    return [key,item];
+
+
+function extractMPD(textToDec)
+{
+    var regMPD = /\<MPD.*?\>/g;
+    var hMPD = extractPattern(regMPD.exec(textToDec));
+    return hMPD;
 }
 
-function createMediaPlaylist(MpdInfo, url)
-{
-    var header = "#EXTM3U\n" + "#EXT-X-VERSION:6\n";
-    var tail = "#EXT-X-ENDLIST\n";
-    var mediaPlaylistBlob = [];
-    
-    var key = MpdInfo[0];
-    var item = MpdInfo[1];
-    
-    var videoKey = new RegExp('video');
-    var audioKey = new RegExp('audio');
-    var idx = key.indexOf('mimeType');
-    while (idx != -1)
+function extractPeriod(textToDec, hMPD, url)  // input - loaded mpd file without newlines
+{   
+    cnt = 0;
+    t1 = [];
+    t2 = [];
+    t3 = [];
+    var regPeriod = /\<Period.*?\<\/Period\>/g;
+    while (period = regPeriod.exec(textToDec))
     {
-	var segmentType = item[idx];
-	
-	// #EXT-X-TARGETDURATION:
-        var rawDuration = item[key.indexOf('duration')];   // use period's total duration as upper bound of media segments
-	var timePatternFull = /(\d*)H(\d*)M(.*)S/;
-	var timePatternSec = /(\d*)S/;
-        var time = timePatternFull.exec(rawDuration);
-	if (time)
-	{
-	    var maxDuration = parseFloat(time[1]) * 3600 + parseFloat(time[2]) * 60 + parseFloat(time[3]);
-	}
-	else
-	{
-	    var time = timePatternSec.exec(rawDuration);
-	    var maxDuration = parseFloat(time[1]);
-        }
-	var maxSegmentDuration = '#EXT-X-TARGETDURATION:' + maxDuration + '\n';
-	    
-	// #EXT-X-MEDIA-SEQUENCE:
-	var firstSequence = item[key.indexOf('startNumber', idx)] || 1;   // by default, number starts from 1 
-	var startSequence = '#EXT-X-MEDIA-SEQUENCE:' + firstSequence + '\n';
-	    
-	// #EXT-X-PLAYLIST-TYPE:EVENT
-	switch (item[key.indexOf('type')])
-	{
-	    case 'static':
-		var playlistType = '#EXT-X-PLAYLIST-TYPE:EVENT\n';  // VOD
-		break;
-	    case 'live':
-		var playlistType = '#EXT-X-PLAYLIST-TYPE:EVENT\n';
-		break;
-	    default:
-		break;
-	    }
-
-	// #EXT-X-MAP:URI="tears_of_steel_1080p_1000k_h264_dash_track1_init.mp4"  
-	var mapInit = '#EXT-X-MAP:URI="' + url.substring(0, url.lastIndexOf('/') + 1) + item[key.indexOf('initialization', idx)] + '"\n';
-	
-	// #EXT-X-MLB-INFO:max-bw=999120,duration=4.000
-	// totalDuration
-	var rawtotalDuration = item[key.indexOf('mediaPresentationDuration')];
-        var totalTime = timePatternFull.exec(rawDuration);
-	if (totalTime)
-	{
-	    var totalDuration = parseFloat(totalTime[1]) * 3600 + parseFloat(totalTime[2]) * 60 + parseFloat(totalTime[3]);
-	}
-	else
-	{
-	    var totalTime = timePatternSec.exec(rawDuration);
-	    var totalDuration = parseFloat(totalTime[1]);
-	}
-	var info = '#EXT-X-MLB-INFO:' + 'max-bw=' + item[key.indexOf('bandwidth', idx)] + ',duration=' + totalDuration + '\n';
-	 
-	var segmentsName = item[key.indexOf('media', idx)];
-	var segmentDuration = parseFloat(item[key.indexOf('duration', idx)]) / parseFloat(item[key.indexOf('timescale', idx)]);
-	var numSegment = Math.ceil(totalDuration/segmentDuration);    // how many segments of the representation
-	var segmentUnit = "";
-	 
-	if (videoKey.test(segmentType))
-	{    
-	   for (i = firstSequence; i <= numSegment; i++)
-	   {
-	      if (i === numSegment)
-	      {
-		  segmentDuration = totalDuration - segmentDuration * (numSegment - 1);
-	      }
-	      // #EXTINF
-	      inf = '#EXTINF:' + segmentDuration  + '\n';
-	      // tears_of_steel_1080p_1000k_h264_dash_track1_$Number$.m4s
-	      segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) + '\n';
-	      segmentUnit += inf + segment;
-	   }
-	    
-	   // #EXT-X-MLB-VIDEO-INFO:codecs="avc1.640028",width="1920",height="1080",sar="1:1",frame-duration=12288
-	   var video_info = '#EXT-X-MLB-VIDEO-INFO:' + 'codecs="' + item[key.indexOf('codecs', idx)] + '",' + 'width="' + item[key.indexOf('width', idx)] + '",' + 'height="' + item[key.indexOf('height', idx)] + '",' + 'sar="' + item[key.indexOf('sar', idx)] + '",' + 'frame-duration=' + item[key.indexOf('timescale', idx)] + '\n';	   
-	   	
-	   var output = maxSegmentDuration + startSequence + playlistType + mapInit + segmentUnit + video_info + info;
-	}
-	else if (audioKey.test(segmentType))
-	{
-	   for (i = firstSequence; i <= numSegment; i++)
-	   {
-	   if (i === numSegment)
-	      {
-		  segmentDuration = totalDuration - segmentDuration * (numSegment - 1);
-	      }
-	   // #EXTINF:2.000
-	   inf = '#EXTINF:' + segmentDuration  + '\n';
-	   // tears_of_steel_1080p_1000k_h264_dash_track1_$Number$.m4s    
-	   segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) +'\n';
-	   segmentUnit += inf + segment;  
-	   }
-	    
-	   // #EXT-X-MLB-AUDIO-INFO:codecs="mp4a.40.2",audioSamplingRate="48000"
-	   var audio_info = '#EXT-X-MLB-AUDIO-INFO:' + 'codecs="' + item[key.indexOf('codecs', idx)] + '",' + 'audioSamplingRate="' + item[key.indexOf('audioSamplingRate', idx)] + '"\n';
-	   
-	   // #EXT-X-MLB-AUDIO-CHANNEL-INFO:schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011",value="2"
-	   var channel_info = '#EXT-X-MLB-AUDIO-CHANNEL-INFO:schemeIdUri="' + item[key.indexOf('schemeIdUri', idx)] + '",' + 'value="' + item[key.indexOf('value', idx)] + '\n';
-	   
-	   var output = maxSegmentDuration + startSequence + playlistType + mapInit + segmentUnit + audio_info + channel_info + info;
-	}
-	
-	idx = key.indexOf('mimeType', idx + 1);
-	mediaPlaylistBlob.push(saveTextAsBlob(header + output + tail));
+	var regPer = /\<Period.*?\>/g;
+        var hPeriod = hMPD.concat(extractPattern(regPer.exec(period[0])));
+        extractAdSet(period[0], hPeriod, url);
     }
-    return mediaPlaylistBlob;
+    var outputMaster = "#EXTM3U\n" + "#EXT-X-VERSION:6\n";
+    for (i = 0; i < t1.length; i++)
+    {
+	outputMaster = outputMaster.concat(t1[i], t2[i]);
+    }
+    return outputMaster.concat(t3);
 }
 
-function createMasterPlaylist(MpdInfo, mediaPlaylistBlob)
+function extractAdSet(period, hPeriod, url) // input - one period/one content
 {
-    var header = "#EXTM3U\n" + "#EXT-X-VERSION:6\n";
-    var output = header;
-    
-    var key = MpdInfo[0];
-    var item = MpdInfo[1];
-    // segment type
-    var videoKey = new RegExp('video');
-    var audioKey = new RegExp('audio');
-    var idx = key.indexOf('mimeType');
-    var j = 0;
-    while (idx != -1)
+    var regAdSet = /\<AdaptationSet.*?\<\/AdaptationSet\>/g;
+    while (adSet = regAdSet.exec(period))
     {
-	var segmentType = item[idx];
-	
-	if (videoKey.test(segmentType))
+	var regAd = /\<AdaptationSet.*?\>/g;
+	var hAdSet = hPeriod.concat(extractPattern(regAd.exec(adSet[0])));
+	extractRep(adSet[0], hAdSet, url);
+    }
+}
+
+function extractRep(adaptation, hAdSet, url) // input - one adaptation for one content
+{
+    var regRep = /\<Representation.*?\<\/Representation\>/g;    
+    while (rep = regRep.exec(adaptation))
+    {
+	var hRep = hAdSet.concat(extractPattern(rep[0]));
+	/*store master data*/
+	var vidMaster = videoMaster(hRep);
+	var audMaster = audioMaster(hRep);
+	if (vidMaster)
 	{
-	    // video segments
-	    var videoMasterInfo = '#EXT-X-STREAM-INF:AUDIO="audio",';    // audio name be improved according to audio segments!
-	    videoMasterInfo += 'CODECS="' + item[key.indexOf('codecs', idx)] + '",';
-	    videoMasterInfo += 'RESOLUTION=' + item[key.indexOf('width', idx)] + '*' + item[key.indexOf('height', idx)] + ',';
-	    if (key.indexOf('frameRate', idx) !== -1)
+	    t1[cnt] = vidMaster;
+	    t2[cnt] = saveTextAsBlob(mediaPlaylist(hRep, url)) + '\n';
+	}
+	if (audMaster)
+	{
+	    for (k = 0; k < cnt; k++)
 	    {
-		videoMasterInfo += 'FRAME_RATE=' + item[key.indexOf('frameRate', idx)] + ',';
+		t1[k] = t1[k].concat(audMaster[0]);
 	    }
-	    videoMasterInfo += 'BANDWIDTH=' + item[key.indexOf('bandwidth', idx)];  
-	    
-	    var mediaRep = item[key.indexOf('media', idx)];			// may need improvement
-	    var videoMediaPlaylist = mediaPlaylistBlob[j];
-	    j = j + 1;
-	    output += videoMasterInfo + '\n' + videoMediaPlaylist + '\n';
+	    tt1 = audMaster[1];  // #EXT-X-MEDIA:TYPE=AUDIO,URI="tears_of_steel_1080p_audio_32k_dash_track1.m3u8",GROUP-ID=audio5,LANGUAGE=eng
+	    tt2 = 'URI="' + saveTextAsBlob(mediaPlaylist(hRep, url)) + '"';   // URI="blob:http%3A//localhost/56dc79ef-362d-42f5-93c5-591627fd9b40"
+	    t3 = tt1.replace(/URI=\".*?\"/, tt2);
 	}
-	else if (audioKey.test(segmentType))
-	{
-	    // audio segments
-	    var mediaRep = item[key.indexOf('media', idx)];
-	    var audioMaster = '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="' + mediaPlaylistBlob[j] + '"\n';
-	    output += audioMaster;
-	}	
-	idx = key.indexOf('mimeType', idx + 1);
+	cnt = cnt + 1;
     }
-    return saveTextAsBlob(output);
+}
+
+function extractPattern(text)
+{
+    var regPattern = /(\w+)=\"(.*?)\"/g;			 		// find the pattern [xxx="yyy"], remember xxx and yyy
+    var h = [];
+    while(array = regPattern.exec(text))
+    {
+	h.push([array[1], array[2]]);
+    }    
+    return h;
+}
+
+function retrieveValue(key, hRep)
+{
+    var idx = hRep.map(function(value){return value[0];}).indexOf(key);
+    if (idx !== -1) {return hRep[idx][1];}
+    else {return 0;}
+}
+
+function retrieveValue2(key, hRep)
+{
+    var idx1 = hRep.map(function(value){return value[0];}).indexOf(key);
+    var idx = hRep.map(function(value){return value[0];}).indexOf(key, idx1+1);
+    if (idx !== -1) {return hRep[idx][1];}
+    else {return 0;}
+}
+
+function videoMaster(hRep)
+{
+    var repType = retrieveValue('mimeType', hRep);
+    var videoKey = new RegExp('video');
+    if (videoKey.test(repType))
+    {
+	var videoMasterInfo = '#EXT-X-STREAM-INF:';
+	if (retrieveValue('bandwidth', hRep)) {videoMasterInfo+= 'BANDWIDTH=' + retrieveValue('bandwidth', hRep);}
+	if (retrieveValue('codecs', hRep)) {videoMasterInfo += ',CODECS="' + retrieveValue('codecs', hRep) + '"';}
+	if (retrieveValue('width', hRep) && retrieveValue('height', hRep)) {videoMasterInfo += ',RESOLUTION=' + retrieveValue('width', hRep) + '*' + retrieveValue('height', hRep);}
+	if (retrieveValue('frameRate', hRep)) {videoMasterInfo += ',FRAMERATE=' + retrieveValue('frameRate', hRep);}
+	return videoMasterInfo;	
+    }
+    else 
+    {
+	return null;
+    }
+}
+
+function audioMaster(hRep)
+{
+    var repType = retrieveValue('mimeType', hRep);
+    var audioKey = new RegExp('audio');
+    if (audioKey.test(repType))
+    {
+	var audioMasterInfo = '#EXT-X-MEDIA:TYPE=AUDIO';
+	if (retrieveValue('id', hRep)) {audioMasterInfo += ',GROUP-ID="audio' + retrieveValue('id', hRep) + '"';}
+	var videoMasterInfo = ',AUDIO="audio' + retrieveValue('id', hRep) + '"\n';
+	if (retrieveValue('lang', hRep)) {audioMasterInfo += ',LANGUAGE="' + retrieveValue('lang', hRep) + '"';}
+	audioMasterInfo += ',URI="' + retrieveValue('media', hRep).substr(0, retrieveValue('media', hRep).lastIndexOf('_')) + '.m3u8"';
+	return [videoMasterInfo, audioMasterInfo];	
+    }
+    else
+    {
+	return null;
+    }
+}
+
+function mediaPlaylist(hRep, url)
+{
+    var header = "#EXTM3U\n" + "#EXT-X-VERSION:6\n";
+    
+    var segmentType = retrieveValue('mimeType', hRep);
+    var videoKey = new RegExp('video');
+    var audioKey = new RegExp('audio');
+    
+    // #EXT-X-TARGETDURATION:2
+    var rawDuration = retrieveValue('duration', hRep);  // if no such key, ceil(all #EXTINF)!   // retrieveValue('maxSegmentDuration', hRep);
+    var timePattern = /(\d*)H(\d*)M(.*)S/;
+    var time = timePattern.exec(rawDuration);
+    var maxDuration = Math.ceil(parseFloat(time[1]) * 3600 + parseFloat(time[2]) * 60 + parseFloat(time[3]));
+    var maxSegmentDuration = '#EXT-X-TARGETDURATION:' + maxDuration + '\n';
+    
+    // #EXT-X-MEDIA-SEQUENCE:1      
+    var startSequence = '#EXT-X-MEDIA-SEQUENCE:' + retrieveValue('startNumber', hRep) + '\n';
+    
+    // #EXT-X-PLAYLIST-TYPE:EVENT
+    var playlistType = '#EXT-X-PLAYLIST-TYPE:EVENT\n';
+    
+    // #EXT-X-MAP:URI="tears_of_steel_1080p_1000k_h264_dash_track1_init.mp4"
+    var mapInit = '#EXT-X-MAP:URI="' + url.substring(0, url.lastIndexOf('/') + 1) + retrieveValue('initialization', hRep) + '"\n';
+    
+    // #EXT-X-MLB-INFO:max-bw=999120,duration=4.000
+    var rawtotalDuration = retrieveValue('duration', hRep);   // if no such key, add(all #EXTINF)!
+    var totalTime = timePattern.exec(rawtotalDuration);
+    var totalDuration = parseFloat(totalTime[1]) * 3600 + parseFloat(totalTime[2]) * 60 + parseFloat(totalTime[3]);
+    var info = '#EXT-X-MLB-INFO:' + 'max-bw=' + retrieveValue('bandwidth', hRep) + ',duration=' + totalDuration + '\n';
+    
+    var segmentsName = retrieveValue('media', hRep);
+    var segmentDuration = parseFloat(retrieveValue2('duration', hRep)) / parseFloat(retrieveValue('timescale', hRep));
+    var numSegment = Math.ceil(totalDuration/segmentDuration);    // how many segments of the representation
+    var segmentUnit = "";
+    
+    if (videoKey.test(segmentType))
+    {    
+	for (i = retrieveValue('startNumber', hRep); i <= numSegment; i++)
+	{
+	    if (i === numSegment)
+	    {
+	      segmentDuration = totalDuration - segmentDuration * (numSegment - 1);
+	    }
+	    // #EXTINF:2.000
+	    inf = '#EXTINF:' + segmentDuration  + '\n';
+	    
+	    // tears_of_steel_1080p_1000k_h264_dash_track1_$Number$.m4s
+	    segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) + '\n';
+	    segmentUnit += inf + segment;
+	}
+	    
+	// #EXT-X-MLB-VIDEO-INFO:codecs="avc1.640028",width="1920",height="1080",sar="1:1",frame-duration=12288
+	var video_info = '#EXT-X-MLB-VIDEO-INFO:' + 'codecs="' + retrieveValue('codecs', hRep) + '",' + 'width="' + retrieveValue('width', hRep) + '",' + 'height="' + retrieveValue('height', hRep) + '",' + 'sar="' + retrieveValue('sar', hRep) + '",' + 'frame-duration=' + retrieveValue('timescale', hRep) + '\n';	   
+	
+	var output = maxSegmentDuration + startSequence + playlistType + mapInit + segmentUnit + video_info + info;
+    }
+    else if (audioKey.test(segmentType))
+    {
+	for (i = retrieveValue('startNumber', hRep); i <= numSegment; i++)
+	{
+	    if (i === numSegment)
+	    {
+		segmentDuration = totalDuration - segmentDuration * (numSegment - 1);
+	    }
+	// #EXTINF:2.000
+	inf = '#EXTINF:' + segmentDuration  + '\n';
+	
+	// tears_of_steel_1080p_1000k_h264_dash_track1_$Number$.m4s
+	segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) + '\n';
+	segmentUnit += inf + segment;  
+	}
+	    
+	// #EXT-X-MLB-AUDIO-INFO:codecs="mp4a.40.2",audioSamplingRate="48000"
+	var audio_info = '#EXT-X-MLB-AUDIO-INFO:' + 'codecs="' + retrieveValue('codecs', hRep) + '",' + 'audioSamplingRate="' + retrieveValue('audioSamplingRate', hRep) + '\n';
+	   
+	// #EXT-X-MLB-AUDIO-CHANNEL-INFO:schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011",value="2"
+	var channel_info = '#EXT-X-MLB-AUDIO-CHANNEL-INFO:schemeIdUri="' + retrieveValue('schemeIdUri', hRep) + '",' + 'value="' + retrieveValue('value', hRep) + '\n';
+	   
+	var output = maxSegmentDuration + startSequence + playlistType + mapInit + segmentUnit + audio_info + channel_info + info;
+    }
+    
+    // #EXT-X-ENDLIST\n
+    if (retrieveValue('type', hRep) === 'static') {output += '#EXT-X-ENDLIST\n';}
+    return header + output;
 }
 
 function saveTextAsBlob(textToSave)
