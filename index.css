@@ -1,6 +1,6 @@
 .header-container {
     position: relative;
-    top: 50px;
+    top: 40px;
 }
 .header-container h1 {
     font-family: Georgia;
@@ -11,7 +11,7 @@
 
 .main-container {
     position: relative;
-    top: 70px;
+    top: 75px;
     width: 70%;
     min-width: 615px;
     margin: auto;
@@ -20,20 +20,35 @@
     overflow: hidden;
 }
 
-#ManifestConversion input[type=text]{
-    width: 100%;
-    margin: 10px 0;
+#loadFromURL {
+    display: inline;
 }
-#ManifestConversion input[type=File]{
+#loadFromFile {
+    display: none;
+}
+#manifestConversion select{
+    width: 8%;
+    margin: 10px 0;
+    display: inline;
+    font-size: 20px;
+}
+#manifestConversion input[type=text]{
+    width: 78%;
+    margin: auto;
+    display: inline;
+    float: center;
+}
+#manifestConversion input[type=File]{
     width: 50%;
     margin: 10px 0;
     display: inline;
     font-size: 20px;
 }
-#ManifestConversion h4{
+#manifestConversion h4{
     display: inline;
+    font-size: 20px;
 }
-#ManifestConversion button{
+#manifestConversion button{
     margin: 20px 0;
     padding: 8px;
     width: 50%;
@@ -41,7 +56,7 @@
     text-align: center;
     background-color: DodgerBlue;
 }
-#ManifestConversion a{
+#manifestConversion a{
     margin: 20px 0;
     padding: 8px;
     width: 50%;

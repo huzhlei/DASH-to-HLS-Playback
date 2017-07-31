@@ -1,11 +1,23 @@
+function selectLoad()
+{
+    if (document.getElementById("mySelect").value === 'File')
+    {
+	document.getElementById("loadFromURL").style.display = "none";
+	document.getElementById("loadFromFile").style.display = "inline";
+    }
+    else if (document.getElementById("mySelect").value === 'URL')
+    {
+	document.getElementById("loadFromFile").style.display = "none";
+	document.getElementById("loadFromURL").style.display = "inline";
+    }
+}
+
 /*conversion part*/
 function loadAndConvert()
-{
-    var fileToLoad = document.getElementById("fileToLoad").files[0];
-    var url = document.getElementById("urlToLoad").value;
-    
-    if (fileToLoad === undefined)
+{    
+    if (document.getElementById("mySelect").value === 'URL')
     {
+	var url = document.getElementById("urlToLoad").value;
 	var request = new XMLHttpRequest();
 	request.open('GET', url, true);
 	request.responseType = "text";
@@ -20,8 +32,9 @@ function loadAndConvert()
 	};
 	request.send();
     }
-    else
+    else if (document.getElementById("mySelect").value === 'File')
     {   
+        var fileToLoad = document.getElementById("fileToLoad").files[0];
 	var fileReader = new FileReader();
 	fileReader.onload = function(fileLoadedEvent)
 	{   
@@ -67,17 +80,24 @@ function createMediaPlaylist(MpdInfo, url)
     {
 	var segmentType = item[idx];
 	
-	// #EXT-X-TARGETDURATION:2
-        var rawDuration = item[key.indexOf('duration')];   // if no such key, ceil(all #EXTINF)!
+	// #EXT-X-TARGETDURATION:
+        var rawDuration = item[key.indexOf('duration')];   // use period's total duration as upper bound of media segments
 	var timePatternFull = /(\d*)H(\d*)M(.*)S/;
 	var timePatternSec = /(\d*)S/;
-        var time = timePatternFull.exec(rawDuration)||timePatternSec.exec(rawDuration);
-	var maxDuration = parseFloat(time[1]) * 3600 + parseFloat(time[2]) * 60 + parseFloat(time[3]);
-	// var maxDuration = parseFloat(time[1]);
+        var time = timePatternFull.exec(rawDuration);
+	if (time)
+	{
+	    var maxDuration = parseFloat(time[1]) * 3600 + parseFloat(time[2]) * 60 + parseFloat(time[3]);
+	}
+	else
+	{
+	    var time = timePatternSec.exec(rawDuration);
+	    var maxDuration = parseFloat(time[1]);
+        }
 	var maxSegmentDuration = '#EXT-X-TARGETDURATION:' + maxDuration + '\n';
 	    
-	// #EXT-X-MEDIA-SEQUENCE:1
-	var firstSequence = item[key.indexOf('startNumber', idx)];         
+	// #EXT-X-MEDIA-SEQUENCE:
+	var firstSequence = item[key.indexOf('startNumber', idx)] || 1;   // by default, number starts from 1 
 	var startSequence = '#EXT-X-MEDIA-SEQUENCE:' + firstSequence + '\n';
 	    
 	// #EXT-X-PLAYLIST-TYPE:EVENT
@@ -98,10 +118,17 @@ function createMediaPlaylist(MpdInfo, url)
 	
 	// #EXT-X-MLB-INFO:max-bw=999120,duration=4.000
 	// totalDuration
-	var rawtotalDuration = item[key.indexOf('mediaPresentationDuration')];   // if no such key, ceil(all #EXTINF)!
-        var totalTime = timePatternFull.exec(rawtotalDuration)||timePatternSec.exec(rawDuration);
-	var totalDuration = parseFloat(totalTime[1]) * 3600 + parseFloat(totalTime[2]) * 60 + parseFloat(totalTime[3]);
-	//var totalDuration = parseFloat(totalTime[1]);
+	var rawtotalDuration = item[key.indexOf('mediaPresentationDuration')];
+        var totalTime = timePatternFull.exec(rawDuration);
+	if (totalTime)
+	{
+	    var totalDuration = parseFloat(totalTime[1]) * 3600 + parseFloat(totalTime[2]) * 60 + parseFloat(totalTime[3]);
+	}
+	else
+	{
+	    var totalTime = timePatternSec.exec(rawDuration);
+	    var totalDuration = parseFloat(totalTime[1]);
+	}
 	var info = '#EXT-X-MLB-INFO:' + 'max-bw=' + item[key.indexOf('bandwidth', idx)] + ',duration=' + totalDuration + '\n';
 	 
 	var segmentsName = item[key.indexOf('media', idx)];
@@ -117,10 +144,10 @@ function createMediaPlaylist(MpdInfo, url)
 	      {
 		  segmentDuration = totalDuration - segmentDuration * (numSegment - 1);
 	      }
-	      // #EXTINF:2.000
+	      // #EXTINF
 	      inf = '#EXTINF:' + segmentDuration  + '\n';
 	      // tears_of_steel_1080p_1000k_h264_dash_track1_$Number$.m4s
-	      segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) + '\n';     // better to load all segment files and read their names
+	      segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) + '\n';
 	      segmentUnit += inf + segment;
 	   }
 	    
@@ -140,7 +167,7 @@ function createMediaPlaylist(MpdInfo, url)
 	   // #EXTINF:2.000
 	   inf = '#EXTINF:' + segmentDuration  + '\n';
 	   // tears_of_steel_1080p_1000k_h264_dash_track1_$Number$.m4s    
-	   segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) +'\n';     // better to load all segment files and read their names
+	   segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) +'\n';
 	   segmentUnit += inf + segment;  
 	   }
 	    
@@ -154,15 +181,14 @@ function createMediaPlaylist(MpdInfo, url)
 	}
 	
 	idx = key.indexOf('mimeType', idx + 1);
-	var tmp = saveTextAsBlob(header + output + tail);
-	mediaPlaylistBlob.push(tmp);
+	mediaPlaylistBlob.push(saveTextAsBlob(header + output + tail));
     }
     return mediaPlaylistBlob;
 }
 
 function createMasterPlaylist(MpdInfo, mediaPlaylistBlob)
 {
-    var header = "#EXTM3U\n" + "#EXT-X-VERSION:6\n";						// to output
+    var header = "#EXTM3U\n" + "#EXT-X-VERSION:6\n";
     var output = header;
     
     var key = MpdInfo[0];
@@ -186,10 +212,10 @@ function createMasterPlaylist(MpdInfo, mediaPlaylistBlob)
 	    {
 		videoMasterInfo += 'FRAME_RATE=' + item[key.indexOf('frameRate', idx)] + ',';
 	    }
-	    videoMasterInfo += 'BANDWIDTH=' + item[key.indexOf('bandwidth', idx)];   //to output
+	    videoMasterInfo += 'BANDWIDTH=' + item[key.indexOf('bandwidth', idx)];  
 	    
 	    var mediaRep = item[key.indexOf('media', idx)];			// may need improvement
-	    var videoMediaPlaylist = mediaPlaylistBlob[j];   // same as the name of saved media playlist name, to output
+	    var videoMediaPlaylist = mediaPlaylistBlob[j];
 	    j = j + 1;
 	    output += videoMasterInfo + '\n' + videoMediaPlaylist + '\n';
 	}
@@ -197,10 +223,9 @@ function createMasterPlaylist(MpdInfo, mediaPlaylistBlob)
 	{
 	    // audio segments
 	    var mediaRep = item[key.indexOf('media', idx)];
-	    var audioMaster = '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="' + mediaPlaylistBlob[j] + '"\n'; // to output
+	    var audioMaster = '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="' + mediaPlaylistBlob[j] + '"\n';
 	    output += audioMaster;
-	}
-	
+	}	
 	idx = key.indexOf('mimeType', idx + 1);
     }
     return saveTextAsBlob(output);

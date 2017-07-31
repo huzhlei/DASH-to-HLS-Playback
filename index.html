@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-
+<html>
   <head>
     <title>DASH to HLS Playback</title>
     
@@ -14,14 +14,36 @@
 
   <body>
     <div class="header-container">
-      <h1>DASH to HLS Playback</h1>
+      <a target="_blank" href="https://github.com/huzhlei/DASH-to-HLS-Playback">
+	<h1>DASH to HLS Playback</h1>
+      </a>
     </div>
 
     <div class="main-container">   
-      <div id='ManifestConversion'>
-	<h4>Load MPD: </h4><input type="text" id="urlToLoad"><br>
-	<h4>OR</h4><br>
-	<input type="file" id="fileToLoad">(BaseURL expected in MPD)<br>
+      <div id="manifestConversion">
+        <h4>Load MPD from </h4>
+        <select id="mySelect" onchange="selectLoad()">
+	  <option value="URL" selected="selected"><h4>URL</h4>
+	  <option value="File"><h4>file</h4>
+	</select>    
+	<div id="loadFromURL">
+	  <input type="text" id="urlToLoad" list="mpds">
+	    <datalist id="mpds">
+	      <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/1/MultiRate.mpd">
+	      <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/2/MultiRate.mpd">
+	      <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd">
+	      <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/2/MultiRes.mpd">
+	      <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/1/MultiRatePatched.mpd">
+	      <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/2/MultiRate.mpd">
+	      <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/1/MultiResMPEG2.mpd">
+	      <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/2/MultiRes.mpd">
+	      <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/1/MultiRate.mpd">
+	      <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/2/MultiRate.mpd">
+	  </datalist><br>
+	</div>
+	<div id="loadFromFile">
+	  <input type="file" id="fileToLoad"><h4>(BaseURL expected in MPD)</h4><br>
+	</div>
 	<button onclick="loadAndConvert()">Convert and Play</button>
 	<a id="streamURL" target="_blank">Open Master M3U8</a><br>
       </div>
@@ -35,7 +57,7 @@
 	  <img src="https://cloud.githubusercontent.com/assets/616833/19739063/e10be95a-9bb9-11e6-8100-2896f8500138.png"/>
 	</a>
     </div>
-
+  
     <script src="hls.js"></script>
     <script src="conversion.js"></script>
     <script src="canvas.js"></script>
@@ -50,12 +72,6 @@
 	$('#dumpfMP4').click(function()  { dumpfMP4 = this.checked; updatePermalink();});
 	$('#levelCapping').change(function()  { levelCapping = this.value; updatePermalink();});
 	$('#defaultAudioCodec').change(function()  { defaultAudioCodec = this.value; updatePermalink();});
-	$('#enableStreaming').prop( "checked", enableStreaming );
-	$('#autoRecoverError').prop( "checked", autoRecoverError );
-	$('#enableWorker').prop( "checked", enableWorker );
-	$('#dumpfMP4').prop( "checked", dumpfMP4 );
-	$('#levelCapping').val(levelCapping);
-	$('#defaultAudioCodec').val(defaultAudioCodec || "undefined");
       });
 
       'use strict';
