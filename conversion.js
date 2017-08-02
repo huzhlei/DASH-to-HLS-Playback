@@ -25,6 +25,7 @@ function loadAndConvert()
 	    if (this.status === 200) {
 		var mpdRaw = request.responseText;
 		var mpdRaw = mpdRaw.replace(/\n+/g,''); // get rid of all newlines
+		var mpdRaw = mpdRaw.replace(/\s{2,}/g,'');
 		var masterAddress = saveTextAsBlob(extractPeriod(mpdRaw, extractMPD(mpdRaw), url));
 		document.getElementById("streamURL").value = masterAddress;
 		document.getElementById("streamURL").href = masterAddress;
@@ -41,10 +42,11 @@ function loadAndConvert()
 	{   
 	    var mpdRaw = fileLoadedEvent.target.result;
 	    var mpdRaw = mpdRaw.replace(/\n+/g,''); // get rid of all newlines
+	    var mpdRaw = mpdRaw.replace(/\s{2,}/g,'');
 	    var regURL = /\<BaseURL\>(.*?)\<\/BaseURL\>/g;
 	    var url = regURL.exec(mpdRaw)[1];
 	    var masterAddress = saveTextAsBlob(extractPeriod(mpdRaw, extractMPD(mpdRaw), url));
-	    document.getElementById("streamURL").value = masterAddress; 
+	    document.getElementById("streamURL").value = masterAddress;
 	    document.getElementById("streamURL").href = masterAddress;
 	    loadStream($('#streamURL').val());
 	}
@@ -62,38 +64,41 @@ function extractMPD(textToDec)
 
 function extractPeriod(textToDec, hMPD, url)  // input - loaded mpd file without newlines
 {   
-    cnt = 0;
-    t1 = [];
-    t2 = [];
-    t3 = [];
+    var outputMaster = "#EXTM3U\n" + "#EXT-X-VERSION:7\n";
+    var playedLength = 0;
     var regPeriod = /\<Period.*?\<\/Period\>/g;
     while (period = regPeriod.exec(textToDec))
     {
+	cnt = 0;
+	t1 = [];
+	t2 = [];
+	t3 = [];
 	var regPer = /\<Period.*?\>/g;
         var hPeriod = hMPD.concat(extractPattern(regPer.exec(period[0])));
-        extractAdSet(period[0], hPeriod, url);
+        var playedLength = playedLength + extractAdSet(period[0], hPeriod, url, playedLength);
+	for (i = 0; i < t1.length; i++)
+	{
+	    outputMaster = outputMaster.concat(t1[i], t2[i]);
+	}
+	outputMaster = outputMaster.concat(t3);
     }
-    var outputMaster = "#EXTM3U\n" + "#EXT-X-VERSION:6\n";
-    for (i = 0; i < t1.length; i++)
-    {
-	outputMaster = outputMaster.concat(t1[i], t2[i]);
-    }
-    return outputMaster.concat(t3);
+    return outputMaster;
 }
 
-function extractAdSet(period, hPeriod, url) // input - one period/one content
+function extractAdSet(period, hPeriod, url, playedLength) // input - one period/one content
 {
     var regAdSet = /\<AdaptationSet.*?\<\/AdaptationSet\>/g;
     while (adSet = regAdSet.exec(period))
     {
 	var regAd = /\<AdaptationSet.*?\>/g;
 	var hAdSet = hPeriod.concat(extractPattern(regAd.exec(adSet[0])));
-	extractRep(adSet[0], hAdSet, url);
+	var playedPeriodLength = extractRep(adSet[0], hAdSet, url, playedLength);
     }
+    return playedPeriodLength;
 }
 
-function extractRep(adaptation, hAdSet, url) // input - one adaptation for one content
-{
+function extractRep(adaptation, hAdSet, url, playedLength) // input - one adaptation for one content
+{	
     var regRep = /\<Representation.*?\<\/Representation\>/g;    
     while (rep = regRep.exec(adaptation))
     {
@@ -104,7 +109,8 @@ function extractRep(adaptation, hAdSet, url) // input - one adaptation for one c
 	if (vidMaster)
 	{
 	    t1[cnt] = vidMaster;
-	    t2[cnt] = saveTextAsBlob(mediaPlaylist(hRep, url)) + '\n';
+	    var childPlaylist = mediaPlaylist(hRep, url, playedLength);
+	    t2[cnt] = saveTextAsBlob(childPlaylist[0]) + '\n';
 	}
 	if (audMaster)
 	{
@@ -113,11 +119,13 @@ function extractRep(adaptation, hAdSet, url) // input - one adaptation for one c
 		t1[k] = t1[k].concat(audMaster[0]);
 	    }
 	    tt1 = audMaster[1];  // #EXT-X-MEDIA:TYPE=AUDIO,URI="tears_of_steel_1080p_audio_32k_dash_track1.m3u8",GROUP-ID=audio5,LANGUAGE=eng
-	    tt2 = 'URI="' + saveTextAsBlob(mediaPlaylist(hRep, url)) + '"';   // URI="blob:http%3A//localhost/56dc79ef-362d-42f5-93c5-591627fd9b40"
+	    var childPlaylist = mediaPlaylist(hRep, url, playedLength);
+	    tt2 = 'URI="' + saveTextAsBlob(childPlaylist[0]) + '"';   // URI="blob:http%3A//localhost/56dc79ef-362d-42f5-93c5-591627fd9b40"
 	    t3 = tt1.replace(/URI=\".*?\"/, tt2);
 	}
 	cnt = cnt + 1;
     }
+    return childPlaylist[1];
 }
 
 function extractPattern(text)
@@ -135,15 +143,19 @@ function retrieveValue(key, hRep)
 {
     var idx = hRep.map(function(value){return value[0];}).indexOf(key);
     if (idx !== -1) {return hRep[idx][1];}
-    else {return 0;}
+    else {return null;}
 }
 
 function retrieveValue2(key, hRep)
 {
-    var idx1 = hRep.map(function(value){return value[0];}).indexOf(key);
-    var idx = hRep.map(function(value){return value[0];}).indexOf(key, idx1+1);
-    if (idx !== -1) {return hRep[idx][1];}
-    else {return 0;}
+    if (retrieveValue(key, hRep))
+    {
+	var idx1 = hRep.map(function(value){return value[0];}).indexOf(key);
+	var idx = hRep.map(function(value){return value[0];}).indexOf(key, idx1+1);
+	if (idx !== -1) {return hRep[idx][1];}
+	else {return -1;}
+    }
+    else {return null;}
 }
 
 function videoMaster(hRep)
@@ -175,7 +187,7 @@ function audioMaster(hRep)
 	if (retrieveValue('id', hRep)) {audioMasterInfo += ',GROUP-ID="audio' + retrieveValue('id', hRep) + '"';}
 	var videoMasterInfo = ',AUDIO="audio' + retrieveValue('id', hRep) + '"\n';
 	if (retrieveValue('lang', hRep)) {audioMasterInfo += ',LANGUAGE="' + retrieveValue('lang', hRep) + '"';}
-	audioMasterInfo += ',URI="' + retrieveValue('media', hRep).substr(0, retrieveValue('media', hRep).lastIndexOf('_')) + '.m3u8"';
+	audioMasterInfo += ',URI="' + retrieveValue('media', hRep).substr(0, retrieveValue('media', hRep).lastIndexOf('_')) + '.m3u8"\n';
 	return [videoMasterInfo, audioMasterInfo];	
     }
     else
@@ -184,9 +196,26 @@ function audioMaster(hRep)
     }
 }
 
-function mediaPlaylist(hRep, url)
+function mediaPlaylist(hRep, url, playedLength)
 {
-    var header = "#EXTM3U\n" + "#EXT-X-VERSION:6\n";
+    var header = "#EXTM3U\n" + "#EXT-X-VERSION:7\n";
+    
+    // #EXT-X-START:TIME-OFFSET=-15
+    var timePatternFull = /(\d*)H(\d*)M(.*)S/;
+    var timePatternSec = /(\d*)S/;
+    /*var mediaLengthStr = retrieveValue('mediaPresentationDuration', hRep);
+    var mediaLength = timePatternFull.exec(mediaLengthStr);
+    if (mediaLength)
+    {
+	var timeOffset = -(parseFloat(mediaLength[1]) * 3600 + parseFloat(mediaLength[2]) * 60 + parseFloat(mediaLength[3])) + playedLength;
+    }
+    else
+    {
+	var mediaLength = timePatternSec.exec(mediaLengthStr);
+	var timeOffset = -parseFloat(mediaLength[1]) + playedLength;
+    }
+    var startTime = '#EXT-X-START:TIME-OFFSET=' + timeOffset + '\n';     */
+    var startTime = '#EXT-X-START:TIME-OFFSET=' + playedLength + '\n';
     
     var segmentType = retrieveValue('mimeType', hRep);
     var videoKey = new RegExp('video');
@@ -194,13 +223,21 @@ function mediaPlaylist(hRep, url)
     
     // #EXT-X-TARGETDURATION:2
     var rawDuration = retrieveValue('duration', hRep);  // if no such key, ceil(all #EXTINF)!   // retrieveValue('maxSegmentDuration', hRep);
-    var timePattern = /(\d*)H(\d*)M(.*)S/;
-    var time = timePattern.exec(rawDuration);
-    var maxDuration = Math.ceil(parseFloat(time[1]) * 3600 + parseFloat(time[2]) * 60 + parseFloat(time[3]));
+    var time = timePatternFull.exec(rawDuration);
+    if (time)
+    {
+	var maxDuration = Math.ceil(parseFloat(time[1]) * 3600 + parseFloat(time[2]) * 60 + parseFloat(time[3]));
+    }
+    else
+    {
+	var time = timePatternSec.exec(rawDuration);
+	var maxDuration = parseFloat(time[1]);
+    }
     var maxSegmentDuration = '#EXT-X-TARGETDURATION:' + maxDuration + '\n';
-    
-    // #EXT-X-MEDIA-SEQUENCE:1      
-    var startSequence = '#EXT-X-MEDIA-SEQUENCE:' + retrieveValue('startNumber', hRep) + '\n';
+	
+    // #EXT-X-MEDIA-SEQUENCE:1
+    var startNumber = parseFloat(retrieveValue('startNumber', hRep));
+    var startSequence = '#EXT-X-MEDIA-SEQUENCE:' + startNumber + '\n';
     
     // #EXT-X-PLAYLIST-TYPE:EVENT
     var playlistType = '#EXT-X-PLAYLIST-TYPE:EVENT\n';
@@ -209,51 +246,63 @@ function mediaPlaylist(hRep, url)
     var mapInit = '#EXT-X-MAP:URI="' + url.substring(0, url.lastIndexOf('/') + 1) + retrieveValue('initialization', hRep) + '"\n';
     
     // #EXT-X-MLB-INFO:max-bw=999120,duration=4.000
-    var rawtotalDuration = retrieveValue('duration', hRep);   // if no such key, add(all #EXTINF)!
-    var totalTime = timePattern.exec(rawtotalDuration);
-    var totalDuration = parseFloat(totalTime[1]) * 3600 + parseFloat(totalTime[2]) * 60 + parseFloat(totalTime[3]);
-    var info = '#EXT-X-MLB-INFO:' + 'max-bw=' + retrieveValue('bandwidth', hRep) + ',duration=' + totalDuration + '\n';
+    var rawPeriodDuration = retrieveValue('duration', hRep);   // if no such key, add(all #EXTINF)!
+    var periodTime = timePatternFull.exec(rawPeriodDuration);
+    if (periodTime)
+    {
+	var periodDuration = parseFloat(periodTime[1]) * 3600 + parseFloat(periodTime[2]) * 60 + parseFloat(periodTime[3]);
+    }
+    else
+    {
+    	var periodTime = timePatternSec.exec(rawPeriodDuration);
+	var periodDuration = parseFloat(periodTime[1]);
+    }
+    var info = '#EXT-X-MLB-INFO:' + 'max-bw=' + retrieveValue('bandwidth', hRep) + ',duration=' + periodDuration + '\n';
     
     var segmentsName = retrieveValue('media', hRep);
     var segmentDuration = parseFloat(retrieveValue2('duration', hRep)) / parseFloat(retrieveValue('timescale', hRep));
-    var numSegment = Math.ceil(totalDuration/segmentDuration);    // how many segments of the representation
+    var numSegment = Math.ceil(periodDuration/segmentDuration);    // how many segments of the representation
     var segmentUnit = "";
     
     if (videoKey.test(segmentType))
     {    
-	for (i = retrieveValue('startNumber', hRep); i <= numSegment; i++)
+	for (i = 0; i < numSegment; i++)
 	{
-	    if (i === numSegment)
+	    var discontinuity = '';
+	    if (i === numSegment - 1)
 	    {
-	      segmentDuration = totalDuration - segmentDuration * (numSegment - 1);
+	      segmentDuration = periodDuration - segmentDuration * (numSegment - 1);
+	      var discontinuity = '#EXT-X-DISCONTINUITY\n';
 	    }
 	    // #EXTINF:2.000
 	    inf = '#EXTINF:' + segmentDuration  + '\n';
 	    
 	    // tears_of_steel_1080p_1000k_h264_dash_track1_$Number$.m4s
-	    segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) + '\n';
-	    segmentUnit += inf + segment;
+	    segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/, i + startNumber) + '\n';
+	    segmentUnit += inf + segment + discontinuity;
 	}
 	    
 	// #EXT-X-MLB-VIDEO-INFO:codecs="avc1.640028",width="1920",height="1080",sar="1:1",frame-duration=12288
 	var video_info = '#EXT-X-MLB-VIDEO-INFO:' + 'codecs="' + retrieveValue('codecs', hRep) + '",' + 'width="' + retrieveValue('width', hRep) + '",' + 'height="' + retrieveValue('height', hRep) + '",' + 'sar="' + retrieveValue('sar', hRep) + '",' + 'frame-duration=' + retrieveValue('timescale', hRep) + '\n';	   
 	
-	var output = maxSegmentDuration + startSequence + playlistType + mapInit + segmentUnit + video_info + info;
+	var output = startTime + maxSegmentDuration + startSequence + playlistType + mapInit + segmentUnit + video_info + info;
     }
     else if (audioKey.test(segmentType))
     {
-	for (i = retrieveValue('startNumber', hRep); i <= numSegment; i++)
+	for (i = 0; i < numSegment; i++)
 	{
-	    if (i === numSegment)
+	    var discontinuity = '';
+	    if (i === numSegment - 1)
 	    {
-		segmentDuration = totalDuration - segmentDuration * (numSegment - 1);
+		segmentDuration = periodDuration - segmentDuration * (numSegment - 1);
+		var discontinuity = '#EXT-X-DISCONTINUITY\n';
 	    }
-	// #EXTINF:2.000
-	inf = '#EXTINF:' + segmentDuration  + '\n';
+	    // #EXTINF:2.000
+	    inf = '#EXTINF:' + segmentDuration  + '\n';
 	
-	// tears_of_steel_1080p_1000k_h264_dash_track1_$Number$.m4s
-	segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i) + '\n';
-	segmentUnit += inf + segment;  
+	    // tears_of_steel_1080p_1000k_h264_dash_track1_$Number$.m4s
+	    segment = url.substring(0, url.lastIndexOf('/') + 1) + segmentsName.replace(/\$.*?\$/,i + startNumber) + '\n';
+	    segmentUnit += inf + segment + discontinuity;  
 	}
 	    
 	// #EXT-X-MLB-AUDIO-INFO:codecs="mp4a.40.2",audioSamplingRate="48000"
@@ -262,12 +311,12 @@ function mediaPlaylist(hRep, url)
 	// #EXT-X-MLB-AUDIO-CHANNEL-INFO:schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011",value="2"
 	var channel_info = '#EXT-X-MLB-AUDIO-CHANNEL-INFO:schemeIdUri="' + retrieveValue('schemeIdUri', hRep) + '",' + 'value="' + retrieveValue('value', hRep) + '\n';
 	   
-	var output = maxSegmentDuration + startSequence + playlistType + mapInit + segmentUnit + audio_info + channel_info + info;
+	var output = startTime + maxSegmentDuration + startSequence + playlistType + mapInit + segmentUnit + audio_info + channel_info + info;
     }
     
     // #EXT-X-ENDLIST\n
-    if (retrieveValue('type', hRep) === 'static') {output += '#EXT-X-ENDLIST\n';}
-    return header + output;
+    // if (retrieveValue('type', hRep) === 'static') {output += '#EXT-X-ENDLIST\n';}
+    return [header + output, periodDuration];
 }
 
 function saveTextAsBlob(textToSave)
