@@ -40,4 +40,4 @@ Hit Convert and Play.
 [<img src="https://cloud.githubusercontent.com/assets/616833/19739063/e10be95a-9bb9-11e6-8100-2896f8500138.png" alt="hls.js logo" width="80">](https://github.com/video-dev/hls.js) - used to stream under HTTP live streaming protocol.
 
 # Working flowchart
-
+<img src="https://github.com/huzhlei/DASH-to-HLS-Playback/blob/master/flowchart.jpg">
