@@ -1,10 +1,11 @@
 <?php
     // address to conversion.php
-    // https://github.com/huzhlei/DASH-to-HLS-Playback/blob/server_side_conversion/conversion.php
+    // on server - http://10.4.246.249/dash2hls_server/conversion.php
+    // on github - https://github.com/huzhlei/DASH-to-HLS-Playback/blob/server_side_conversion/conversion.php
     
-    $file = $_POST["urlToLoad"];
-    // $file = "http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd";
-    // $file = "manifest.mpd";
+    $file = $_POST["urlToLoad"]; // read from javascript
+    // $file = "http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd";  // load from other server
+    // $file = "manifest.mpd";  // load from local server
     if (strrpos($file, "/") !== FALSE) {
         $path = substr($file, 0, strrpos($file, "/") + 1);  // media segments and mpd locate at same address
     }
