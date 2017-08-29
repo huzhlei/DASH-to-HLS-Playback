@@ -1,89 +1,119 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>DASH to HLS Playback</title>
     
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.3/FileSaver.min.js"></script>
+    <head>
+        <meta charset="UTF-8">
+        <title>DASH to HLS Playback</title>
+        
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.3/FileSaver.min.js"></script>
     
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
-    <link rel="stylesheet" type="text/css" href="index.css">
-  </head>
-
-  <body>
-    <div class="header-container">
-      <a target="_blank" href="https://github.com/huzhlei/DASH-to-HLS-Playback">
-	<h1>DASH to HLS Playback</h1>
-      </a>
-    </div>
-
-    <div class="main-container">   
-      <div id="manifestConversion">
-        <h4>Load MPD from </h4>
-        <select id="mySelect" onchange="selectLoad()">
-	  <option value="URL" selected="selected"><h4>URL</h4>
-	  <option value="File"><h4>file</h4>
-	</select>    
-	<div id="loadFromURL">
-	  <input type="text" id="urlToLoad" list="mpds">
-	    <datalist id="mpds">
-	      <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/1/MultiRate.mpd">
-	      <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/2/MultiRate.mpd">
-	      <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd">
-	      <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/2/MultiRes.mpd">
-	      <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/1/MultiRatePatched.mpd">
-	      <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/2/MultiRate.mpd">
-	      <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/1/MultiResMPEG2.mpd">
-	      <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/2/MultiRes.mpd">
-	      <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/1/MultiRate.mpd">
-	      <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/2/MultiRate.mpd">
-	  </datalist><br>
-	</div>
-	<div id="loadFromFile">
-	  <input type="file" id="fileToLoad"><h4>(BaseURL expected in MPD)</h4><br>
-	</div>
-	<button onclick="loadAndConvert()">Convert and Play</button>
-	<a id="streamURL" target="_blank">Open Master M3U8</a><br>
-      </div>
-      <video id="video" controls autoplay class="videoCentered"></video><br>
-      <canvas id="buffered_c" height="15" class="videoCentered" onclick="buffered_seek(event);"></canvas><br><br>
-    </div>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+        <link rel="stylesheet" type="text/css" href="index.css">
+    </head>
     
-    <div class="footer-container">
-      <h2>Stream with:</h2>
-	<a target="_blank" href="https://github.com/video-dev/hls.js">
-	  <img src="https://cloud.githubusercontent.com/assets/616833/19739063/e10be95a-9bb9-11e6-8100-2896f8500138.png"/>
-	</a>
-    </div>
-  
-    <script src="hls.js"></script>
-    <script src="conversion.js"></script>
-    <script src="canvas.js"></script>
-    <script src="metrics.js"></script>
-    <script>
-      $(document).ready(function() {
-	$('#streamURL').change(function()  { loadStream($('#streamURL').val());});
-	$('#metricsButtonWindow').toggle(windowSliding);
-	$('#metricsButtonFixed').toggle(!windowSliding);
-	$('#autoRecoverError').click(function()  { autoRecoverError = this.checked; updatePermalink();});
-	$('#enableWorker').click(function()  { enableWorker = this.checked; updatePermalink();});
-	$('#dumpfMP4').click(function()  { dumpfMP4 = this.checked; updatePermalink();});
-	$('#levelCapping').change(function()  { levelCapping = this.value; updatePermalink();});
-	$('#defaultAudioCodec').change(function()  { defaultAudioCodec = this.value; updatePermalink();});
-      });
+    <body>
+        <div class="header-container">
+            <a target="_blank" href="https://github.com/huzhlei/DASH-to-HLS-Playback">
+                <h1>DASH to HLS Playback</h1>
+            </a>
+        </div>
 
-      'use strict';
-      var hls,events, stats,tracks,fmp4Data,
-	  enableStreaming = JSON.parse(getURLParam('enableStreaming',true))
-	  autoRecoverError = JSON.parse(getURLParam('autoRecoverError',true)),
-	  enableWorker = JSON.parse(getURLParam('enableWorker',true)),
-	  levelCapping = JSON.parse(getURLParam('levelCapping',-1)),
-	  defaultAudioCodec = getURLParam('defaultAudioCodec',undefined),
-	  dumpfMP4 = getURLParam('dumpfMP4',false);
-      var video = $('#video')[0];
-      video.volume = 0.10;
-    </script>
-  </body>
+        <div class="main-container">   
+            <div id="manifestConversion">
+                <h4>Load MPD from </h4>
+                <select id="mySelect" onchange="selectLoad()">
+                    <option value="URL" selected="selected"><h4>URL</h4>
+                    <option value="File"><h4>file</h4>
+                </select>
+                
+                <div id="loadFromURL">
+                    <iframe name="frame" style="display:none"></iframe>
+                    <form method="post" action="conversion.php" target="frame">
+                    <input type="text" list="mpds" name="urlToLoad">
+                        <datalist id="mpds">
+                          <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/1/MultiRate.mpd">
+                          <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/2/MultiRate.mpd">
+                          <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd">
+                          <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/2/MultiRes.mpd">
+                          <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/1/MultiRatePatched.mpd">
+                          <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/2/MultiRate.mpd">
+                          <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/1/MultiResMPEG2.mpd">
+                          <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/2/MultiRes.mpd">
+                          <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/1/MultiRate.mpd">
+                          <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/2/MultiRate.mpd">
+                      </datalist><br>-
+                    <!--<input type="text" name="urlToLoad">-->
+                    <input type="submit" value="convert">
+                    </form>
+                </div>
+                
+                <div id="loadFromFile">
+                  <input type="file" id="fileToLoad"><h4>(BaseURL expected in MPD)</h4><br>
+                </div>
+                
+                <button type="button" onclick="play()">Play</button>
+                <script>
+                    function play() {
+                        document.getElementById("streamURL").value = "master.m3u8";
+                        loadStream($('#streamURL').val());
+                    }
+                    
+                    /*function loadAndConvert() {
+                        $.ajax({
+                            url:"conversion.php",
+                            type:"POST",
+                            success:function() {
+                                // document.getElementById("streamURL").value = data;
+                                // document.getElementById("streamURL").href = data;
+                                // loadStream($('#streamURL').val());
+                            }
+                        });
+                    }*/
+                    
+                </script>
+                <a id="streamURL" target="_blank">Open Master M3U8</a><br> <!--!!!!-->
+            
+            <video id="video" controls autoplay class="videoCentered"></video><br>
+            <canvas id="buffered_c" height="15" class="videoCentered" onclick="buffered_seek(event);"></canvas><br><br>
+        </div>
+        
+        <div class="footer-container">
+          <h2>Stream with:</h2>
+            <a target="_blank" href="https://github.com/video-dev/hls.js">
+              <img src="https://cloud.githubusercontent.com/assets/616833/19739063/e10be95a-9bb9-11e6-8100-2896f8500138.png"/>
+            </a>
+        </div>
+       
+        <script src="hls.js"></script>
+        <script src="player.js"></script>
+        <script src="canvas.js"></script>
+        <script src="metrics.js"></script>
+        <script>
+            $(document).ready(function() {
+              $('#streamURL').change(function()  { loadStream($('#streamURL').val());});
+              $('#metricsButtonWindow').toggle(windowSliding);
+              $('#metricsButtonFixed').toggle(!windowSliding);
+              $('#autoRecoverError').click(function()  { autoRecoverError = this.checked; updatePermalink();});
+              $('#enableWorker').click(function()  { enableWorker = this.checked; updatePermalink();});
+              $('#dumpfMP4').click(function()  { dumpfMP4 = this.checked; updatePermalink();});
+              $('#levelCapping').change(function()  { levelCapping = this.value; updatePermalink();});
+              $('#defaultAudioCodec').change(function()  { defaultAudioCodec = this.value; updatePermalink();});
+            });
+            'use strict';
+            var hls,events, stats,tracks,fmp4Data,
+                enableStreaming = JSON.parse(getURLParam('enableStreaming',true)),
+                autoRecoverError = JSON.parse(getURLParam('autoRecoverError',true)),
+                enableWorker = JSON.parse(getURLParam('enableWorker',true)),
+                levelCapping = JSON.parse(getURLParam('levelCapping',-1)),
+                defaultAudioCodec = getURLParam('defaultAudioCodec',undefined),
+                dumpfMP4 = getURLParam('dumpfMP4',false);
+            var video = $('#video')[0];
+            video.volume = 0.10;
+        </script>
+        
+    </body>
+    
 </html>
