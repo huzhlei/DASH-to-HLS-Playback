@@ -8,6 +8,12 @@
     color: #334AFF;
     text-align: center;
 }
+.header-container h4{
+    font-family: Georgia;
+    font-size: 25px;
+    color: DodgerBlue;
+    text-align: center;
+}
 
 .main-container {
     position: relative;
@@ -19,12 +25,15 @@
     padding: 10px;
 }
 .main-container h4{
-    font-family: Georgia;
-    font-size: 25px;
-    color: DodgerBlue;
-    text-align: center;
+    font-size: 27px;
+    text-align: left;
     display: inline;
-    font-size: 30px;
+    margin-right: 10px;
+}
+.main-container form{
+    font-size: 22px;
+    text-align: right;
+    display: inline;
     margin-right: 10px;
 }
 .main-container a{
@@ -32,14 +41,12 @@
     font-size: 15px;
 }
 #manifestConversion input[type=text]{
-    width: 70%;
+    font-size: 21px;
+    width: 85%;
     margin: auto;
-    display: inline;
+    display: inline-block;
     overflow: hidden;
-    padding-right: .5em;
-}
-#manifestConversion input[type=submit]{
-    float: right;
+    float: right
 }
 #manifestConversion button{
     margin: 20px 0;
@@ -48,15 +55,10 @@
     font-size: 22px;
     text-align: center;
     background-color: DodgerBlue;
+    display: inline-block;
 }
 #manifestConversion a{
-    margin: 20px 0;
-    padding: 8px;
-    width: 50%;
-    font-size: 22px;
-    text-align: center;
-    border: 2px solid DodgerBlue;
-    float: right;
+    display: none;
 }
 
 .videoCentered {

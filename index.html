@@ -16,46 +16,56 @@
     
     <body>
         <div class="header-container">
-            <a target="_blank" href="https://github.com/huzhlei/DASH-to-HLS-Playback">
+            <a target="_blank" href="https://github.com/huzhlei/DASH-to-HLS-Playback/tree/server_side_conversion">
                 <h1>DASH to HLS Playback</h1>
+            </a>
+            <a target="_blank" href="https://github.com/huzhlei/DASH-to-HLS-Playback/blob/server_side_conversion/conversion.php">   
+                <h4>manifests conversion on server with conversion.php</h4>
             </a>
         </div>
 
-        <div class="main-container">   
-            <a target="_blank" href="https://github.com/huzhlei/DASH-to-HLS-Playback/blob/server_side_conversion/conversion.php">   
-                <h4>conversion.php</h4>
-                <p>http://10.4.246.249/dash2hls_server/conversion.php</p>
-            </a>
-            <div id="manifestConversion">                   
+        <div class="main-container">             
+            <div id="manifestConversion">  
+                <h4>Server URL</h4>
+                <input type="text" id="serverURL" list="servers" value="./conversion.php">
+                    <datalist id="servers">
+                        <option value="./conversion.php">
+                        <option value="http://example.com/conversion.php">
+                    </datalist>
+                <br><br>
                 <iframe name="frame" style="display:none"></iframe>
-                <form method="post" action="conversion.php" target="frame">
+                <h4>MPD URL</h4>
+                <form method="post" action="" target="frame">
                     <input type="text" list="mpds" name="urlToLoad">
                         <datalist id="mpds">
-                          <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/1/MultiRate.mpd">
-                          <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/2/MultiRate.mpd">
-                          <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd">
-                          <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/2/MultiRes.mpd">
-                          <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/1/MultiRatePatched.mpd">
-                          <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/2/MultiRate.mpd">
-                          <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/1/MultiResMPEG2.mpd">
-                          <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/2/MultiRes.mpd">
-                          <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/1/MultiRate.mpd">
-                          <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/2/MultiRate.mpd">
-                        </datalist><br>-
-                    <input type="submit" value="convert">
+                            <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/1/MultiRate.mpd">
+                            <option value="http://dash.akamaized.net/dash264/TestCasesHD/1b/qualcomm/2/MultiRate.mpd">
+                            <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd">
+                            <option value="http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/2/MultiRes.mpd">
+                            <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/1/MultiRatePatched.mpd">
+                            <option value="http://dash.akamaized.net/dash264/TestCases/1b/qualcomm/2/MultiRate.mpd">
+                            <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/1/MultiResMPEG2.mpd">
+                            <option value="http://dash.akamaized.net/dash264/TestCases/2b/qualcomm/2/MultiRes.mpd">
+                            <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/1/MultiRate.mpd">
+                            <option value="http://dash.akamaized.net/dash264/TestCases/9b/qualcomm/2/MultiRate.mpd">
+                        </datalist>
+                    <script>
+                        var serverURL = document.getElementById("serverURL").value;
+                        document.getElementsByTagName("form")[0].setAttribute("action", serverURL);
+                        console.log(document.getElementsByTagName("form")[0].action);
+                    </script>
+                    <button type="submit" value="convert">Convert</button><button type="button" onclick="playback()">Play</button>
                 </form>
-                <button type="button" onclick="playback()">Play</button>
-                <a id="streamURL" target="_blank">Open/Download Master M3U8</a><br>
+                <a id="streamURL" target="_blank"></a>
                 <script>
                     function playback() {
                         document.getElementById("streamURL").value = "master.m3u8";
-                        document.getElementById("streamURL").href = "master.m3u8";
                         loadStream($('#streamURL').val());
                     }
                 </script>
             </div>
-            <video id="video" controls autoplay class="videoCentered"></video><br>
-            <canvas id="buffered_c" height="15" class="videoCentered" onclick="buffered_seek(event);"></canvas><br><br>
+            <video id="video" controls autoplay class="videoCentered"></video>
+            <canvas id="buffered_c" height="15" class="videoCentered" onclick="buffered_seek(event);"></canvas><br>
         </div>
         
         <div class="footer-container">

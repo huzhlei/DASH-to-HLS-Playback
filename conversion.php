@@ -1,21 +1,19 @@
 <?php
-    // address to conversion.php
-    // on server - http://10.4.246.249/dash2hls_server/conversion.php
-    // on github - https://github.com/huzhlei/DASH-to-HLS-Playback/blob/server_side_conversion/conversion.php
-    
-    $file = $_POST["urlToLoad"]; // read from javascript
-    // $file = "http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd";  // load from other server
-    // $file = "manifest.mpd";  // load from local server
-    if (strrpos($file, "/") !== FALSE) {
-        $path = substr($file, 0, strrpos($file, "/") + 1);  // media segments and mpd locate at same address
+   
+    $mpdURL = $_POST["urlToLoad"]; // read from javascript
+    // load from other server    
+    // $mpdURL = "http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd";
+    // $mpdURL = "manifest.mpd";  // load from local server
+    if (strrpos($mpdURL, "/") !== FALSE) {
+        $path = substr($mpdURL, 0, strrpos($mpdURL, "/") + 1);  // media segments and mpd locate at same address
     }
     else {
         $path = ""; // locate at localhost
     }
 
     // load mpd file and remove new lines
-    function loadFile($file) {
-        $mpd = htmlspecialchars(file_get_contents($file));
+    function loadFile($mpdURL) {
+        $mpd = htmlspecialchars(file_get_contents($mpdURL));
         $mpdRaw = preg_replace("~\n~", "", $mpd);
         return $mpdRaw;
     }
@@ -209,7 +207,7 @@
     }
         
     /*conversion starts here*/    
-    $mpdRaw = loadFile($file);
+    $mpdRaw = loadFile($mpdURL);
     $mpdText = extractMPD($mpdRaw);
 
     // hierarchical loop (period -> adaptation set -> representation)
