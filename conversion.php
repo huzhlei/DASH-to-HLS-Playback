@@ -287,7 +287,6 @@
     
     // pass name of master playlist to hls.js
     $masterName = "master.m3u8";
-    $masterJSON = json_encode($masterName);
     echo $masterName;
         
     /*
