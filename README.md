@@ -7,7 +7,7 @@ It is written with Javascript and HTML.
 
 ## Getting Worked
 ### Prerequisite
-A web server (for example a localhost) is required to store the newly created M3U8 files, fetch media segments and play them out. Since All HLS resources must be delivered with CORS headers permitting `GET` requests.
+A web server (for example a localhost) is required to hold the newly created M3U8 files, fetch media segments and play them out. Since All HLS resources must be delivered with CORS headers permitting `GET` requests.
 ### Installing
 Under the server folder git clone the source HTTP.
 ```
