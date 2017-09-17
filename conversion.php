@@ -1,9 +1,11 @@
 <?php
    
-    $mpdURL = $_POST["urlToLoad"]; // read from javascript
+    // read from javascript
+    $mpdURL = $_POST["urlToLoad"]; 
     // load from other server    
     // $mpdURL = "http://dash.akamaized.net/dash264/TestCasesHD/2b/qualcomm/1/MultiResMPEG2.mpd";
-    // $mpdURL = "manifest.mpd";  // load from local server
+    // load from local server
+    // $mpdURL = "manifest.mpd";  
     if (strrpos($mpdURL, "/") !== FALSE) {
         $path = substr($mpdURL, 0, strrpos($mpdURL, "/") + 1);  // media segments and mpd locate at same address
     }
